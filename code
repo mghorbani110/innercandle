@@ -1,0 +1,410 @@
+//+------------------------------------------------------------------+
+//|                                                            3.mq5 |
+//|                                  Copyright 2023, MetaQuotes Ltd. |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2023, MetaQuotes Ltd."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+  {
+//--- create timer
+   EventSetTimer(60);
+   
+//---
+   return(INIT_SUCCEEDED);
+  }
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+  {
+//--- destroy timer
+   EventKillTimer();
+   
+  }
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+  {
+//---
+//---
+// filter stoploss
+// deleted
+//---
+
+
+//---
+
+      if(Bars(_Symbol,_Period)<60) // if total bars is less than 60 bars
+     {
+      Alert("We have less than 60 bars, EA will now exit!!");
+      return;
+     }
+// We will use the static Old_Time variable to serve the bar time.
+// At each OnTick execution we will check the current bar time with the saved one.
+// If the bar time isn't equal to the saved time, it indicates that we have a new tick.
+   static datetime Old_Time;
+   datetime New_Time[1];
+   bool IsNewBar=false;
+
+// copying the last bar time to the element New_Time[0]
+   int copied=CopyTime(_Symbol,_Period,0,1,New_Time);
+   if(copied>0) // ok, the data has been copied successfully
+     {
+      if(Old_Time!=New_Time[0]) // if old time isn't equal to new bar time
+        {
+         IsNewBar=true;   // if it isn't a first call, the new bar has appeared
+         if(MQL5InfoInteger(MQL5_DEBUGGING)) Print("We have new bar here ",New_Time[0]," old time was ",Old_Time);
+         Old_Time=New_Time[0];            // saving bar time
+        }
+     }
+   else
+     {
+      Alert("Error in copying historical times data, error =",GetLastError());
+      ResetLastError();
+      return;
+     }
+
+//--- EA should only check for new trade if we have a new bar
+   if(IsNewBar==false)
+     {
+      return;
+     }
+ 
+//--- Do we have enough bars to work with
+   int Mybars=Bars(_Symbol,_Period);
+   if(Mybars<60) // if total bars is less than 60 bars
+     {
+      Alert("We have less than 60 bars, EA will now exit!!");
+      return;
+     }
+
+
+
+//---
+// aya candle daroni hast?
+   bool innercandle = false;
+   if((iHigh(_Symbol,_Period,1)<iHigh(_Symbol,_Period,2)) && (iLow(_Symbol,_Period,1)>iLow(_Symbol,_Period,2)))
+      {
+      Print("candle droni");
+      innercandle = true;
+      }
+   else   
+   {
+   Print("nothing"); 
+   return;
+   }
+   
+   
+   
+   //
+   //stoploss for close
+   ulong    ticket;
+   double   sl_price;
+   string   type;
+//--- number of current pending orders
+   uint     total=OrdersTotal();
+//--- go through orders in a loop
+   for(uint i=0;i<total;i++)
+     {
+      //--- return order ticket by its position in the list
+      if((ticket=OrderGetTicket(i))>0)
+        {
+         //--- return order properties
+         double sl_price = OrderGetDouble(ORDER_SL);
+         int type     =  OrderGetInteger(ORDER_TYPE);  //EnumToString(ENUM_ORDER_TYPE(OrderGetInteger(ORDER_TYPE)));
+         double ask = SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+         double bid = SymbolInfoDouble(_Symbol,SYMBOL_BID);
+         printf(sl_price);
+         printf(type);
+         printf(ask);
+         printf(bid);
+         if(type == 4 && iClose(_Symbol,_Period,1)<sl_price  )
+         {
+            MqlTradeRequest request2={};
+            MqlTradeResult  result2={};
+            ZeroMemory(request2);
+            ZeroMemory(result2);
+                     //--- setting the operation parameters     
+            request2.action=TRADE_ACTION_REMOVE;                   // type of trade operation
+            request2.order = ticket;                         // order ticket
+            //--- send the request
+            if(!OrderSend(request2,result2))
+               PrintFormat("OrderSend error %d",GetLastError());  // if unable to send the request, output the error code
+            //--- information about the operation   
+            PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result2.retcode,result2.deal,result2.order);
+            }
+            
+         else if (type == 5 && iClose(_Symbol,_Period,1) > sl_price  )
+            {
+               MqlTradeRequest request2={};
+               MqlTradeResult  result2={};
+               ZeroMemory(request2);
+               ZeroMemory(result2);
+                        //--- setting the operation parameters     
+               request2.action=TRADE_ACTION_REMOVE;                   // type of trade operation
+               request2.order = ticket;                         // order ticket
+               //--- send the request
+               if(!OrderSend(request2,result2))
+                  PrintFormat("OrderSend error %d",GetLastError());  // if unable to send the request, output the error code
+               //--- information about the operation   
+               PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result2.retcode,result2.deal,result2.order);
+            }
+   
+        }
+     }
+   
+   
+   // peyda kardane saghf
+   int k = 3;
+   bool a;
+   while((iHigh(_Symbol,_Period,k)<iHigh(_Symbol,_Period,k-1)) || (iHigh(_Symbol,_Period,k)<iHigh(_Symbol,_Period,k+1)) )
+      {
+      a = ((iHigh(_Symbol,_Period,k)>iHigh(_Symbol,_Period,k-1)) && (iHigh(_Symbol,_Period,k)>iHigh(_Symbol,_Period,k+1)) );
+      printf(a);
+      printf(k);
+      Print(iHigh(_Symbol,_Period,k));
+      k = k+1;
+      }
+   
+   
+   printf("final saghf:");
+   printf(k);
+   Print(iHigh(_Symbol,_Period,k));
+   double saghf = iHigh(_Symbol,_Period,k);
+   printf("-----");
+   
+   // peyda kardane kaf
+   int kk = 3;
+   while((iLow(_Symbol,_Period,kk)>iLow(_Symbol,_Period,kk-1)) || (iLow(_Symbol,_Period,kk)>iLow(_Symbol,_Period,kk+1)) )
+      {
+      a = ((iLow(_Symbol,_Period,kk)>iLow(_Symbol,_Period,kk-1)) && (iLow(_Symbol,_Period,kk)>iLow(_Symbol,_Period,kk+1)) );
+      printf(a);
+      printf(kk);
+      Print(iLow(_Symbol,_Period,kk));
+      kk = kk+1;
+      }
+   
+   printf("final kaf:");
+   printf(kk);
+   Print(iLow(_Symbol,_Period,kk));
+   double kaf = iLow(_Symbol,_Period,kk);
+   printf(kaf);
+
+   // taeen noe vorod
+   int tradetype;
+   if(iClose(_Symbol,_Period,2)>iOpen(_Symbol,_Period,2))
+      {
+      printf("sooodi");
+      tradetype = ORDER_TYPE_SELL_STOP;
+      }
+   else if(iClose(_Symbol,_Period,2)<iOpen(_Symbol,_Period,2))
+      {
+      printf("nozoli");
+      tradetype = ORDER_TYPE_BUY_STOP;
+      }
+   printf(tradetype);
+//
+   // aya barkhord sorat gerefte  !!! inja lazeme age barkhord sorat nagerefte return kone
+   bool tradeif = false;
+   if( (saghf<iClose(_Symbol,_Period,2)) && (saghf>iHigh(_Symbol,_Period,3)) )
+      {
+      tradeif = true;
+      Print("barkhord az bala");
+      }
+   else if( (kaf>iClose(_Symbol,_Period,2)) && (kaf<iLow(_Symbol,_Period,3)) )
+      {
+      tradeif = true;
+      Print("barkhord az paeen");
+      }
+   
+   if (tradeif == false)
+      {
+      return;
+      }
+      
+   //filter 1 10 - 20
+   MqlDateTime time;
+   TimeToStruct(TimeCurrent(), time);
+   if (time.hour <8 || time.hour > 19)
+      return;
+   
+   // eejad moamele
+   double tradev;
+   int currentSpreadPoints = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+   printf("spread");
+   printf(currentSpreadPoints);
+
+   int digit = SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
+   printf("digit"); 
+   //--- declare and initialize the trade request and result of trade request
+   double pr ;
+   double sl ;
+   double tp ;
+   int rr =2;
+   if(tradetype == ORDER_TYPE_BUY_STOP)
+      {
+      pr =  NormalizeDouble(iHigh(_Symbol,_Period,1) + (10 + currentSpreadPoints) * MathPow(10, ((-1)*digit) ) ,digit); // price for opening
+      sl =  NormalizeDouble(iLow(_Symbol,_Period,2) - (10) * MathPow(10, ((-1)*digit) ) , digit);
+      tp =  NormalizeDouble( pr + (pr - sl)*rr , digit);
+      }
+   else if(tradetype == ORDER_TYPE_SELL_STOP)
+      {
+      pr =  NormalizeDouble(iLow(_Symbol,_Period,1) - (10) * MathPow(10, ((-1)*digit) ) ,digit); // price for opening
+      sl =  NormalizeDouble(iHigh(_Symbol,_Period,2) + (10 + currentSpreadPoints) * MathPow(10, ((-1)*digit) ) , digit);
+      tp =  NormalizeDouble( pr - (sl - pr )*rr , digit);
+      }
+      // taeen hajm
+ 
+   double riskcal = 0.01*AccountInfoDouble(ACCOUNT_BALANCE)*iClose(_Symbol,_Period,1);
+   printf(riskcal);
+   double ld = MathFloor(MathAbs(pr - sl)*MathPow(10,digit));
+   double hajm = NormalizeDouble(riskcal/(ld),2);
+   printf(ld);
+   printf(hajm);
+   printf(pr);
+   printf(sl);
+   printf(tp);
+   int timeexe = copied;
+   
+   //filter ld for usdcad <50
+   if (ld > 55)
+      return;
+   
+   
+   // filter saghf va kaf rooz  va dirooz
+   MqlRates PriceDataTableDaily[];  
+   ArraySetAsSeries(PriceDataTableDaily,true);
+   CopyRates(_Symbol,PERIOD_D1,0,2,PriceDataTableDaily); 
+   if(tradetype == ORDER_TYPE_BUY_STOP && tp > PriceDataTableDaily[0].high)
+      {
+      return;
+      }
+   else if (tradetype == ORDER_TYPE_SELL_STOP && tp < PriceDataTableDaily[0].low)
+      {
+      return;
+      }
+      
+    // diroooz
+    
+   if(tradetype == ORDER_TYPE_BUY_STOP && tp > PriceDataTableDaily[1].high)
+      {
+      //return;
+      }
+   else if (tradetype == ORDER_TYPE_SELL_STOP && tp < PriceDataTableDaily[1].low)
+      {
+      //return;
+      }
+   
+   
+   MqlTradeRequest request={};
+   MqlTradeResult  result={};
+   //--- parameters of request
+   request.action   =TRADE_ACTION_PENDING;                     // type of trade operation
+   request.symbol   =_Symbol;                              // symbol
+   request.volume   = hajm;                                   // volume of 0.1 lot
+   request.type     = tradetype;                        // order type
+   request.deviation=5;                                     // allowed deviation from the price
+   request.magic    =123456;                          // MagicNumber of the order
+   //request.expiration = timeexe + 10* 60;
+   request.comment = "inner candle";
+   request.price = pr ;
+   request.sl = sl;
+   request.tp = tp;
+      
+
+//--- send the request
+   if(!OrderSend(request,result))
+      PrintFormat("OrderSend error %d",GetLastError());     // if unable to send the request, output the error code
+//--- information about the operation
+   PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result.retcode,result.deal,result.order);
+   
+   
+  }
+//+------------------------------------------------------------------+
+//| Timer function                                                   |
+//+------------------------------------------------------------------+
+void OnTimer()
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
+//| Trade function                                                   |
+//+------------------------------------------------------------------+
+void OnTrade()
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
+//| TradeTransaction function                                        |
+//+------------------------------------------------------------------+
+void OnTradeTransaction(const MqlTradeTransaction& trans,
+                        const MqlTradeRequest& request,
+                        const MqlTradeResult& result)
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
+//| Tester function                                                  |
+//+------------------------------------------------------------------+
+double OnTester()
+  {
+//---
+   double ret=0.0;
+//---
+
+//---
+   return(ret);
+  }
+//+------------------------------------------------------------------+
+//| TesterInit function                                              |
+//+------------------------------------------------------------------+
+void OnTesterInit()
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
+//| TesterPass function                                              |
+//+------------------------------------------------------------------+
+void OnTesterPass()
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
+//| TesterDeinit function                                            |
+//+------------------------------------------------------------------+
+void OnTesterDeinit()
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
+//| ChartEvent function                                              |
+//+------------------------------------------------------------------+
+void OnChartEvent(const int id,
+                  const long &lparam,
+                  const double &dparam,
+                  const string &sparam)
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
+//| BookEvent function                                               |
+//+------------------------------------------------------------------+
+void OnBookEvent(const string &symbol)
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
